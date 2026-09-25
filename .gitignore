@@ -1,4 +1,7 @@
 node_modules/
 .env
 data/index.json
-data/patches/
+data/patches/*.txt
+web/dist/
+inspect-output.txt
+q.json
