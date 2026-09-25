@@ -6,7 +6,7 @@
  * Run: npm run ask -- "What changed for Tracer?"
  */
 
-import { CHAT_MODEL, chatStream } from "./ollama.js";
+import { CHAT_MODEL, chatStream, type ChatMessage } from "./ollama.js";
 import { loadIndex, retrieve, type Result } from "./retrieve.js";
 
 const TOP_K = 6;          // how many chunks the model gets to read for a normal question
@@ -24,8 +24,10 @@ Rules:
 - Never use outside knowledge about Overwatch, even if you think you know the answer.
 - If the sources don't answer the question, say "The patch notes I have don't cover that." and stop.
 - Include exact numbers (cooldowns, damage, percentages) when the sources give them.
-- Say whether each change is a buff or a nerf when it is clear from the numbers.
+- Label each change as a buff or a nerf only when you are sure. Lower is BETTER for: cooldowns, spread, ultimate cost, reload time, cast time, damage taken. Higher is BETTER for: damage, health, armor, shields, healing, range, speed, duration. If a Developer Comment says what a change is for, trust it. If unsure, leave the label off.
 - If a source is marked "Stadium mode only", say that the change only applies in Stadium.
+- If a source is a bug fix, call it a bug fix, not a buff or nerf.
+- If the sources come from more than one patch, group the bullets by patch, newest patch first, with the patch date as a short heading.
 - Keep it short and easy to skim: a one-sentence summary first, then bullet points.`;
 
 /** Formats the retrieved chunks as numbered sources for the model to read. */
@@ -75,39 +77,43 @@ async function main() {
   console.log(`(${CHAT_MODEL} is reading ${results.length} source(s)${isSummary ? ", summary mode" : ""}...)\n`);
 
   // 2. Generate: the model writes an answer from those chunks only, streamed as it's written
+  const messages: ChatMessage[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    {
+      role: "user",
+      content:
+        `Sources:\n\n${formatSources(results)}\n\nQuestion: ${question}` +
+        (isSummary ? `\n\nThis is a summary: cover EVERY source above, one bullet per hero or topic. Do not skip any.` : ""),
+    },
+  ];
+
   let thinkingShown = false;
-  const { answer, thinkingChars, doneReason } = await chatStream(
-    [
-      { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content:
-          `Sources:\n\n${formatSources(results)}\n\nQuestion: ${question}` +
-          (isSummary ? `\n\nThis is a summary: cover EVERY source above, one bullet per hero or topic. Do not skip any.` : ""),
-      },
-    ],
-    (text) => {
-      if (thinkingShown) {
-        process.stdout.write("\n\n"); // end the "thinking" dots line before the answer starts
-        thinkingShown = false;
-      }
-      process.stdout.write(text);
-    },
-    () => {
-      // Show a dot now and then while a thinking model reasons, so it's clear it's working
-      if (!thinkingShown) process.stdout.write("Thinking");
-      thinkingShown = true;
-      if (Math.random() < 0.05) process.stdout.write(".");
-    },
-  );
+  const printToken = (text: string) => {
+    if (thinkingShown) {
+      process.stdout.write("\n\n"); // end the "thinking" dots line before the answer starts
+      thinkingShown = false;
+    }
+    process.stdout.write(text);
+  };
+  const printThinking = () => {
+    // Show a dot now and then while a thinking model reasons, so it's clear it's working
+    if (!thinkingShown) process.stdout.write("Thinking");
+    thinkingShown = true;
+    if (Math.random() < 0.05) process.stdout.write(".");
+  };
+
+  let { answer, thinkingChars, doneReason } = await chatStream(messages, printToken, printThinking);
+
+  // Fallback: if the model thought so long it ran out of room, retry once without thinking
+  if (!answer.trim() && thinkingChars > 0) {
+    console.log(`\n\n(Thinking ran too long: ${thinkingChars.toLocaleString()} characters. Retrying without thinking...)\n`);
+    thinkingShown = false;
+    ({ answer, doneReason } = await chatStream(messages, printToken, printThinking, false));
+  }
 
   if (!answer.trim()) {
     console.log("\n\nThe model returned an empty answer.");
     console.log(`  Stop reason: ${doneReason}${doneReason === "length" ? " (it ran out of room)" : ""}`);
-    if (thinkingChars > 0) {
-      console.log(`  It spent ${thinkingChars.toLocaleString()} characters thinking first.`);
-      console.log('  Try again with thinking turned off:  $env:THINK="false"');
-    }
     return;
   }
 

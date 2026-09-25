@@ -21,7 +21,8 @@ async function main() {
   console.log(`${chunks.length} chunks\n`);
   for (const chunk of chunks) {
     const tag = chunk.mode === "stadium" ? "[STADIUM] " : "";
-    const label = tag + (chunk.hero ? `HERO  ${chunk.hero} (${chunk.role})` : `SECTION  ${chunk.section}`);
+    const heroLabel = chunk.section === chunk.hero ? chunk.hero : chunk.section;
+    const label = tag + (chunk.hero ? `HERO  ${heroLabel} (${chunk.role})` : `SECTION  ${chunk.section}`);
     const firstLine = chunk.text.split("\n")[0].slice(0, 80);
     console.log(`${label.padEnd(42)} ${chunk.text.length.toString().padStart(5)} chars | ${firstLine}`);
   }

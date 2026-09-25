@@ -172,7 +172,8 @@ export function chunkPatch(patch: PatchInfo, body: string): Chunk[] {
       heroZoneStarted = true;
       hero = headerHero.name;
       role = headerHero.role;
-      section = headerHero.name;
+      // In hero sections the hero's name is enough; elsewhere keep the context, e.g. "Bug Fixes - Mercy"
+      section = topKind === "heroes" ? headerHero.name : `${topSection} - ${headerHero.name}`;
     } else if (headerRole && topKind !== "maps") {
       // "Tank", "Damage", "Support" headings start a role section
       flush();
@@ -190,8 +191,10 @@ export function chunkPatch(patch: PatchInfo, body: string): Chunk[] {
       // A subsection like "Battle Pass Revamp" or, in Bug Fixes, "Stadium"
       flush();
       mode = key.startsWith("stadium") ? "stadium" : topMode;
-      const mentioned = heroesMentionedIn(line);
-      hero = mentioned.length === 1 ? mentioned[0].name : null;   // e.g. "New Tank Hero: D.Mon"
+      // Only hero announcements like "New Tank Hero: D.Mon" get tagged to a hero,
+      // not events that happen to mention one, like "Junkrat's Loot Hunt"
+      const mentioned = /\bhero\b/i.test(line) ? heroesMentionedIn(line) : [];
+      hero = mentioned.length === 1 ? mentioned[0].name : null;
       role = mentioned.length === 1 ? mentioned[0].role : null;
       section = `${topSection} - ${line}`;
     } else {
@@ -204,7 +207,8 @@ export function chunkPatch(patch: PatchInfo, body: string): Chunk[] {
 
 /** The text that actually gets embedded: the chunk plus context about where it came from. */
 export function textForEmbedding(chunk: Chunk): string {
-  const hero = chunk.hero ? `${chunk.hero} (${chunk.role})` : chunk.section;
+  // e.g. "Mauga (tank)", "Bug Fixes - Mercy (support)", or "Map Updates - Busan - Control"
+  const hero = chunk.hero ? `${chunk.section} (${chunk.role})` : chunk.section;
   const about = chunk.mode === "stadium" && chunk.hero ? `Stadium mode only - ${hero}` : hero;
   return `search_document: ${chunk.patch.title} (${chunk.patch.date}). ${about}:\n${chunk.text}`;
 }

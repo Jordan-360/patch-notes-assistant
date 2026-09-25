@@ -39,8 +39,8 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-   export const CHAT_MODEL = process.env.CHAT_MODEL ?? "qwen3.5:4b";
-   
+export const CHAT_MODEL = process.env.CHAT_MODEL ?? "qwen3.5:4b";
+
 // Thinking models (like Qwen 3.5) reason before answering. Set THINK=false to skip that step.
 const THINK = process.env.THINK === undefined ? undefined : process.env.THINK !== "false";
 
@@ -63,6 +63,7 @@ export async function chatStream(
   messages: ChatMessage[],
   onToken: (text: string) => void,
   onThinking?: () => void,
+  think: boolean | undefined = THINK, // pass false to force the model to answer without thinking
 ): Promise<ChatResult> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
@@ -71,7 +72,7 @@ export async function chatStream(
       model: CHAT_MODEL,
       messages,
       stream: true,
-      ...(THINK === undefined ? {} : { think: THINK }),
+      ...(think === undefined ? {} : { think }),
       options: {
         temperature: 0.2, // low temperature: stick closely to the sources
         num_ctx: 16384,   // context window: room for the sources, the thinking, and the answer
