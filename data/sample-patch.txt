@@ -1,0 +1,40 @@
+title: SAMPLE Patch Notes (made up for testing) - January 1, 2026
+date: 2026-01-01
+url: https://example.com/sample-patch
+---
+GENERAL UPDATES
+Competitive seasons now last 8 weeks.
+Hero select screen now shows your most-played heroes first.
+
+TANK
+All tanks: base health increased by 25.
+
+Reinhardt
+Barrier Field health increased from 1200 to 1400.
+Charge cooldown reduced from 7 to 6 seconds.
+
+D.Va
+Defense Matrix recharge rate increased by 10%.
+
+DAMAGE
+Tracer
+Pulse Pistols damage reduced from 6 to 5.5 per bullet.
+
+Soldier: 76
+Helix Rockets cooldown increased from 6 to 7 seconds.
+
+SUPPORT
+All supports: crowd control durations shortened by 10%.
+
+Ana
+Sleep Dart projectile size reduced from 0.2 to 0.15.
+Biotic Grenade cooldown increased from 10 to 11 seconds.
+
+Lúcio
+Speed Boost increased from 25% to 30%.
+
+MAP UPDATES
+King's Row: new flank route added near the second checkpoint.
+
+BUG FIXES
+Fixed a bug where Mercy's Guardian Angel could fail to trigger on moving targets.
