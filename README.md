@@ -1,4 +1,4 @@
-# Patch TL;DR
+# RAG-Powered Patch Notes Assistant
 
 Ask questions about Overwatch patch notes in plain English and get short answers that cite the official notes. Built as a retrieval-augmented generation (RAG) app that runs entirely on a local GPU.
 
