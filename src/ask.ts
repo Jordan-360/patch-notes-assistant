@@ -49,7 +49,7 @@ async function main() {
   // 1. Retrieve: find the most relevant chunks
   const chunks = await loadIndex();
   const isSummary = SUMMARY_QUESTION.test(question);
-  const { results: ranked, filterNote, heroesWithNoChanges } = await retrieve(
+  const { results: ranked, filterNote, heroesWithNoChanges, target } = await retrieve(
     question,
     chunks,
     isSummary ? SUMMARY_TOP_K : TOP_K,
@@ -57,16 +57,24 @@ async function main() {
   // Summaries keep every filtered chunk, in the order they appear in the patch notes;
   // normal questions keep only chunks that are close enough in meaning
   const results = isSummary
-    ? [...ranked].sort((a, b) => chunks.indexOf(a.chunk) - chunks.indexOf(b.chunk))
+    ? [...ranked].sort(
+        (a, b) =>
+          b.chunk.patch.date.localeCompare(a.chunk.patch.date) || // newest patch first
+          chunks.indexOf(a.chunk) - chunks.indexOf(b.chunk),       // then in patch-notes order
+      )
     : ranked.filter((r) => r.score >= MIN_SCORE);
 
   console.log(`Question: ${question}`);
   console.log(`Filter:   ${filterNote}\n`);
 
+  if (target.notFound) {
+    console.log(`I don't have ${target.label} in my patch notes. Add the patch file to data/patches/ and run "npm run ingest".`);
+    return;
+  }
   if (heroesWithNoChanges.length > 0) {
     // The data already answers this, so there's no need to ask the model
     const where = /\bstadium\b/i.test(question) ? " in Stadium" : "";
-    console.log(`There are no changes to ${heroesWithNoChanges.join(" or ")}${where} in the patch notes I have.`);
+    console.log(`There are no changes to ${heroesWithNoChanges.join(" or ")}${where} in ${target.label}.`);
     return;
   }
   if (results.length === 0) {
