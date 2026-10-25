@@ -45,7 +45,7 @@ async function main() {
       return;
     }
     if (question.length > MAX_QUESTION_LENGTH) {
-      res.status(400).json({ error: `Questions must be under ${MAX_QUESTION_LENGTH} characters.` });
+      res.status(400).json({ error: `Questions can be at most ${MAX_QUESTION_LENGTH} characters.` });
       return;
     }
 

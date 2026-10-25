@@ -94,33 +94,35 @@ export async function chatStream(
   let answer = "";
   let thinkingChars = 0;
   let doneReason = "unknown";
+  const handleLine = (line: string) => {
+    if (!line.trim()) return;
+    const piece = JSON.parse(line) as {
+      message?: { content?: string; thinking?: string };
+      done?: boolean;
+      done_reason?: string;
+      error?: string;
+    };
+    if (piece.error) throw new Error(`Ollama error: ${piece.error}`);
+    const thinking = piece.message?.thinking ?? "";
+    if (thinking) {
+      thinkingChars += thinking.length;
+      onThinking?.();
+    }
+    const text = piece.message?.content ?? "";
+    if (text) {
+      answer += text;
+      onToken(text);
+    }
+    if (piece.done) doneReason = piece.done_reason ?? "stop";
+  };
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? ""; // keep any half-received line for the next round
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const piece = JSON.parse(line) as {
-        message?: { content?: string; thinking?: string };
-        done?: boolean;
-        done_reason?: string;
-        error?: string;
-      };
-      if (piece.error) throw new Error(`Ollama error: ${piece.error}`);
-      const thinking = piece.message?.thinking ?? "";
-      if (thinking) {
-        thinkingChars += thinking.length;
-        onThinking?.();
-      }
-      const text = piece.message?.content ?? "";
-      if (text) {
-        answer += text;
-        onToken(text);
-      }
-      if (piece.done) doneReason = piece.done_reason ?? "stop";
-    }
+    lines.forEach(handleLine);
   }
+  handleLine(buffer + decoder.decode()); // the last line, if it didn't end with a newline
   return { answer, thinkingChars, doneReason };
 }

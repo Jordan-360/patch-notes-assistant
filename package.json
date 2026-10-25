@@ -1,8 +1,8 @@
 {
   "name": "patch-notes-assistant",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Ask questions about Overwatch patch notes and get cited answers (local RAG with Ollama)",
   "scripts": {
     "test": "tsx --test src/labels.test.ts",
     "ingest": "tsx src/ingest.ts",
@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "@types/express": "^5.0.6",

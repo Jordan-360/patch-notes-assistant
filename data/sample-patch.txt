@@ -6,6 +6,7 @@ GENERAL UPDATES
 Competitive seasons now last 8 weeks.
 Hero select screen now shows your most-played heroes first.
 
+HERO UPDATES
 TANK
 All tanks: base health increased by 25.
 

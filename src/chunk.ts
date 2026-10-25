@@ -80,7 +80,8 @@ export function parsePatchFile(raw: string, fileName: string): { patch: PatchInf
   for (const key of ["title", "date", "url"]) {
     if (!header[key]) throw new Error(`${fileName} is missing "${key}:" in its header.`);
   }
-  const body = raw.slice(raw.indexOf("\n", divider + 1) + 1);
+  const bodyStart = raw.indexOf("\n", divider + 1); // the line after "---" (none if the file ends there)
+  const body = bodyStart === -1 ? "" : raw.slice(bodyStart + 1);
   return { patch: { title: header.title, date: header.date, url: header.url }, body };
 }
 
