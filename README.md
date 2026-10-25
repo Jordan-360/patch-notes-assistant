@@ -10,7 +10,7 @@ Ask questions about Overwatch patch notes in plain English and get short answers
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLMs-000000)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-![Patch TL;DR answering "What changed for Mauga?"](assets/screenshot.png)
+![Patch Notes Assistant answering "What changed for Mauga?"](assets/screenshot.png)
 
 Patch notes are long, and most players only care about a few heroes. Instead of reading every patch, you can ask things like:
 
