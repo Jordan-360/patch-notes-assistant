@@ -9,6 +9,7 @@
     "search": "tsx src/search.ts",
     "inspect": "tsx src/inspect.ts",
     "ask": "tsx src/ask.ts",
+    "embed-test": "tsx src/embed-test.ts",
     "server": "tsx src/server.ts"
   },
   "keywords": [],

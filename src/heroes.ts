@@ -28,10 +28,12 @@ const SUPPORTS = [
   "Lifeweaver", "Lúcio", "Mercy", "Mizuki", "Moira", "Wuyang", "Zenyatta",
 ];
 
+const withRole = (role: Role) => (name: string): Hero => ({ name, role });
+
 export const HEROES: Hero[] = [
-  ...TANKS.map((name) => ({ name, role: "tank" as Role })),
-  ...DAMAGE.map((name) => ({ name, role: "damage" as Role })),
-  ...SUPPORTS.map((name) => ({ name, role: "support" as Role })),
+  ...TANKS.map(withRole("tank")),
+  ...DAMAGE.map(withRole("damage")),
+  ...SUPPORTS.map(withRole("support")),
 ];
 
 /** Lowercase, strip accents and punctuation: "Soldier: 76" -> "soldier76", "Lúcio" -> "lucio". */

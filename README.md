@@ -50,7 +50,7 @@ Every claim in an answer links to the patch-note excerpt it came from, and every
 |---|---|
 | `src/chunk.ts` | Parses patch files and splits them into hero, section, and map chunks, tagging Stadium-only content |
 | `src/ingest.ts` | Embeds every chunk and saves the index |
-| `src/retrieve.ts`, `src/patches.ts` | Filters by hero, role, patch, and mode, then ranks by similarity |
+| `src/retrieve.ts`, `src/patches.ts` | Loads the index, filters by hero, role, patch, and mode, then ranks by similarity |
 | `src/labels.ts` | Rules engine that labels changes as buffs or nerfs |
 | `src/answer.ts` | The RAG loop: retrieve, prompt, stream, and track citations |
 | `src/server.ts` | Express API: `/api/health`, `/api/patches`, `/api/ask` (streaming) |
@@ -71,7 +71,7 @@ patch-notes-assistant/
 │   ├── answer.ts        # the RAG loop (shared by the CLI and the API)
 │   ├── ollama.ts        # embedding and streaming chat client
 │   ├── server.ts        # Express API
-│   └── ask.ts, search.ts, inspect.ts   # command-line tools
+│   └── ask.ts, search.ts, inspect.ts, embed-test.ts   # command-line tools
 ├── web/                 # React front end
 │   └── src/
 │       ├── App.tsx
@@ -117,6 +117,7 @@ Other commands:
 npm run inspect -- data/patches/2026-09-08.txt   # preview how a patch file gets chunked
 npm run search -- "What changed for Mauga?"      # see which chunks a question retrieves
 npm run ask -- "What changed for Mauga?"         # get an answer in the terminal
+npm run embed-test                                # see how embeddings rank a few sample lines
 npm test                                          # run the buff/nerf rule tests
 ```
 

@@ -13,7 +13,6 @@
 
 import express from "express";
 import { answerQuestion } from "./answer.js";
-import type { IndexedChunk } from "./ingest.js";
 import { CHAT_MODEL } from "./ollama.js";
 import { loadIndex } from "./retrieve.js";
 
@@ -22,7 +21,7 @@ const MAX_QUESTION_LENGTH = 300;
 
 async function main() {
   // Load the index once at startup. After running "npm run ingest", restart the server.
-  const chunks: IndexedChunk[] = await loadIndex();
+  const chunks = await loadIndex();
 
   const app = express();
   app.use(express.json({ limit: "10kb" }));

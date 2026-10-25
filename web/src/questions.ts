@@ -9,13 +9,12 @@ export type PatchScope = "all" | "latest" | string; // a string date like "2026-
 /** "2026-09-08" -> "September 8" */
 export function formatPatchDate(date: string, withYear = false): string {
   const [year, month, day] = date.split("-").map(Number);
-  const text = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     timeZone: "UTC",
     ...(withYear ? { year: "numeric" } : {}),
   });
-  return text;
 }
 
 // Matches the patch phrases the server understands, so we don't add a second one

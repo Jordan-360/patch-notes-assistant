@@ -145,9 +145,9 @@ export function chunkPatch(patch: PatchInfo, body: string): Chunk[] {
 
   for (const rawLine of body.split(/\r?\n/)) {
     const line = rawLine.trim();
-    if (!line || SKIP_LINES.has(normalize(line))) continue;
-
     const key = normalize(line);
+    if (!line || SKIP_LINES.has(key)) continue;
+
     const topKindForLine = TOP_SECTIONS[key];
     const headerHero = heroFromHeaderLine(line);
     const headerRole = ROLE_HEADERS[line.toLowerCase().replace(/\s*heroes?$/, "")];

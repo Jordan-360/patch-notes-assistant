@@ -1,5 +1,5 @@
 /**
- * ollama.ts - talks to the local Ollama server.
+ * ollama.ts - talks to the local Ollama server: embeddings for search, streaming chat for answers.
  */
 
 // Override with the OLLAMA_URL environment variable if Ollama runs somewhere else
