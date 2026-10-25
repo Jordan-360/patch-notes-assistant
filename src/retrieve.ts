@@ -38,6 +38,7 @@ export async function retrieve(
   question: string,
   chunks: IndexedChunk[],
   topK: number,
+  signal?: AbortSignal,
 ): Promise<{ results: Result[]; filterNote: string; heroesWithNoChanges: string[]; target: PatchTarget }> {
   // Which patch is the question about? ("the latest patch", "the September 8 patch", or all of them)
   const target = resolvePatchTarget(question, chunks.map((c) => c.patch.date));
@@ -82,7 +83,7 @@ export async function retrieve(
   filterNote += scopeNote;
 
   // Embed the question and rank candidate chunks by similarity
-  const [questionVector] = await embed([`search_query: ${question}`]);
+  const [questionVector] = await embed([`search_query: ${question}`], signal);
   const results = candidates
     .map((chunk) => ({ chunk, score: cosineSimilarity(questionVector, chunk.embedding) }))
     .sort((a, b) => b.score - a.score)

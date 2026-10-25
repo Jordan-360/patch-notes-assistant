@@ -65,6 +65,7 @@ export async function answerQuestion(
   question: string,
   chunks: IndexedChunk[],
   emit: (event: AnswerEvent) => void,
+  signal?: AbortSignal, // abort to stop early, e.g. when the browser disconnects
 ): Promise<void> {
   // 1. Retrieve: find the most relevant chunks
   const isSummary = SUMMARY_QUESTION.test(question);
@@ -72,6 +73,7 @@ export async function answerQuestion(
     question,
     chunks,
     isSummary ? SUMMARY_TOP_K : TOP_K,
+    signal,
   );
   // Summaries keep every filtered chunk (newest patch first, then patch-notes order);
   // normal questions keep only chunks that are close enough in meaning
@@ -131,12 +133,12 @@ export async function answerQuestion(
   };
   const onToken = (text: string) => emit({ type: "token", text });
 
-  let { answer, thinkingChars, doneReason } = await chatStream(messages, onToken, onThinking);
+  let { answer, thinkingChars, doneReason } = await chatStream(messages, { onToken, onThinking, signal });
 
   // Fallback: if the model thought so long it ran out of room, retry once without thinking
   if (!answer.trim() && thinkingChars > 0) {
     emit({ type: "retry", thinkingChars });
-    ({ answer, doneReason } = await chatStream(messages, onToken, onThinking, false));
+    ({ answer, doneReason } = await chatStream(messages, { onToken, onThinking, think: false, signal }));
   }
   if (!answer.trim()) {
     emit({ type: "empty", doneReason });

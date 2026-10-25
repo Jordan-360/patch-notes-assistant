@@ -37,6 +37,13 @@ export const QUICK_QUESTIONS = [
   { label: "Stadium", question: "Summarize the Stadium changes in the latest patch" },
 ];
 
+export const EXAMPLE_QUESTIONS = [
+  "What changed for Mauga?",
+  "Did Ana's Sleep Dart get weaker?",
+  "Summarize the latest patch for support players",
+  "What changed for Wuyang in Stadium?",
+];
+
 export function patchOptions(patches: PatchInfo[]) {
   return [
     { value: "all", label: "All patches" },

@@ -52,20 +52,23 @@ async function main() {
     res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
 
-    // If the browser disconnects mid-answer, stop sending
-    let closed = false;
+    // If the browser disconnects mid-answer (or the user presses Stop), stop the model too,
+    // so the GPU isn't left generating an answer nobody will see
+    const controller = new AbortController();
     res.on("close", () => {
-      closed = true;
+      if (!res.writableFinished) controller.abort();
     });
+    const send = (event: object) => {
+      if (!controller.signal.aborted) res.write(JSON.stringify(event) + "\n");
+    };
 
     try {
-      await answerQuestion(question, chunks, (event) => {
-        if (!closed) res.write(JSON.stringify(event) + "\n");
-      });
+      await answerQuestion(question, chunks, send, controller.signal);
     } catch (err) {
+      if (controller.signal.aborted) return;
       const message = err instanceof Error ? err.message : "Something went wrong.";
       console.error(`Error answering "${question}":`, message);
-      if (!closed) res.write(JSON.stringify({ type: "error", message }) + "\n");
+      send({ type: "error", message });
     }
     res.end();
   });
