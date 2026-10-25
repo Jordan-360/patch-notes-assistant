@@ -127,7 +127,7 @@ export default function App() {
   return (
     <div className="page">
       <header className="masthead">
-        <h1>Patch TL;DR</h1>
+        <h1>Overwatch Patch Notes Assistant</h1>
         <p>Ask about Overwatch balance changes. Every answer is built from the official patch notes and cites them.</p>
       </header>
 
