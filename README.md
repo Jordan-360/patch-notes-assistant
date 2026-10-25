@@ -111,6 +111,13 @@ cd web && npm run dev
 
 Then open http://localhost:5173.
 
+Answers start almost immediately because the model's "thinking" step is off by default. To let it reason before answering (slower, sometimes more thorough on long summaries), start the server with it on:
+
+```bash
+THINK=true npm run server              # macOS / Linux
+$env:THINK="true"; npm run server      # Windows PowerShell
+```
+
 Other commands:
 
 ```bash
@@ -128,7 +135,7 @@ Patch-note text belongs to Blizzard Entertainment, so patch files are kept out o
 - **Retrieval can be right while generation is wrong.** With Llama 3.2 (3B), the right patch notes reached the model, but it skipped citations, mixed up items, and once claimed tanks had no changes when six did. Moving to Qwen 3.5 (4B) fixed most of it.
 - **Embeddings match structure, not just meaning.** "Ana: Sleep Dart reduced from X to Y" scored closer to a Reinhardt line with the same format than to a related support change. Filtering by hero and role before searching fixed it.
 - **Use code for anything that must be exactly right.** The model repeatedly labeled a spread reduction as a nerf because "the number went down," and it spent tens of thousands of characters overthinking the labels. A small tested rules engine made the labels correct and the answers faster.
-- **Plan for the model failing.** Thinking models sometimes filled their whole context window without answering, so the app retries once without thinking.
+- **Plan for the model failing.** Thinking models sometimes filled their whole context window without answering, so the app retries once without thinking. In the end, thinking is off by default: the sources and buff/nerf labels are already worked out in code, so the extra reasoning mostly added waiting.
 - **Different questions need different retrieval.** Specific questions want the closest few chunks; summaries need every matching chunk, or heroes get left out.
 
 ## Next steps

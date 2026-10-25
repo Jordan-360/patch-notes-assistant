@@ -53,8 +53,9 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 export const CHAT_MODEL = process.env.CHAT_MODEL ?? "qwen3.5:4b";
 
-// Thinking models (like Qwen 3.5) reason before answering. Set THINK=false to skip that step.
-const THINK = process.env.THINK === undefined ? undefined : process.env.THINK !== "false";
+// Thinking models (like Qwen 3.5) can reason before answering. That's off by default because it
+// delays every answer by many seconds; set THINK=true to turn it on.
+const THINK = process.env.THINK === "true";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -70,7 +71,7 @@ export interface ChatResult {
 export interface ChatOptions {
   onToken: (text: string) => void;  // called with each piece of the answer as it arrives
   onThinking?: () => void;          // called while a thinking model reasons
-  think?: boolean;                  // pass false to force the model to answer without thinking
+  think?: boolean;                  // reason before answering (defaults to the THINK setting)
   signal?: AbortSignal;             // abort to stop generating (e.g. the browser disconnected)
 }
 
@@ -83,7 +84,7 @@ export async function chatStream(
     model: CHAT_MODEL,
     messages,
     stream: true,
-    ...(think === undefined ? {} : { think }),
+    think,
     options: {
       temperature: 0.2, // low temperature: stick closely to the sources
       num_ctx: 16384,   // context window: room for the sources, the thinking, and the answer
