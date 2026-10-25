@@ -176,9 +176,9 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="topbar-inner">
-          <a className="brand" href="/" aria-label="Patch TL;DR home">
+          <a className="brand" href="/" aria-label="Patch Notes Assistant home">
             <Logo />
-            <span>Patch TL;DR</span>
+            <span>Patch Notes Assistant</span>
           </a>
           <p className={`server-status ${serverError ? "is-offline" : health ? "is-online" : ""}`} role="status">
             <span className="dot" aria-hidden="true" />
