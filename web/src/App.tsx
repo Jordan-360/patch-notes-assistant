@@ -2,7 +2,7 @@
  * App - ask a question, watch the answer stream in, check the sources.
  */
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
 import { askQuestion, fetchHealth, fetchPatches } from "./api";
 import { Logo } from "./components/Logo";
 import { RichText } from "./components/RichText";
@@ -128,10 +128,18 @@ export default function App() {
     ask(question);
   }
 
-  function stop() {
+  function stop(e: MouseEvent) {
+    // Stop and Ask share a spot, so without this the same click could also submit the form
+    // and ask the question again
+    e.preventDefault();
     abortRef.current?.abort();
     setStatus("done");
-    setNotice("Stopped. The answer may be incomplete.");
+    setNotice(answer ? "Stopped. The answer may be incomplete." : "Stopped.");
+    inputRef.current?.focus();
+  }
+
+  function clearDraft() {
+    setDraft("");
     inputRef.current?.focus();
   }
 
@@ -202,23 +210,31 @@ export default function App() {
             Your question
           </label>
           <div className="ask-row">
-            <input
-              ref={inputRef}
-              id="question"
-              type="text"
-              value={draft}
-              maxLength={MAX_LENGTH}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="What changed for Mauga?"
-              autoComplete="off"
-              disabled={!!serverError}
-            />
+            <div className="ask-field">
+              <input
+                ref={inputRef}
+                id="question"
+                type="text"
+                value={draft}
+                maxLength={MAX_LENGTH}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="What changed for Mauga?"
+                autoComplete="off"
+                disabled={!!serverError}
+              />
+              {draft && !busy && (
+                <button type="button" className="clear" onClick={clearDraft} aria-label="Clear question">
+                  ×
+                </button>
+              )}
+            </div>
+            {/* Separate keys so React swaps in a new button rather than turning Stop into a submit button mid-click */}
             {busy ? (
-              <button type="button" className="button button--secondary" onClick={stop}>
+              <button key="stop" type="button" className="button button--secondary" onClick={stop}>
                 Stop
               </button>
             ) : (
-              <button type="submit" className="button" disabled={!draft.trim() || !!serverError}>
+              <button key="ask" type="submit" className="button" disabled={!draft.trim() || !!serverError}>
                 Ask
               </button>
             )}
