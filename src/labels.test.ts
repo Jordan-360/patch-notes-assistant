@@ -27,6 +27,13 @@ const cases: [line: string, expected: "buff" | "nerf" | null][] = [
   ["Duration increased to 5s (Up from 4s).", "buff"],
   ["Speed Boost increased from 25% to 30%.", "buff"],
   ["Pulse Pistols damage reduced from 6 to 5.5 per bullet.", "nerf"],
+  ["Reload speed increased by 20%.", "buff"],
+  ["Fire rate increased from 10 to 12 rounds per second.", "buff"],
+  ["Defense Matrix recharge rate increased by 10%.", "buff"],
+  // The last stat named is the one that changed
+  ["Movement speed penalty reduced from 50% to 30%.", "buff"],
+  ["Damage taken reduced from 50% to 40%.", "buff"],
+  ["Self-damage increased from 10 to 15.", "nerf"],
   // Not a clear numeric change to a known stat: no label
   ["Removed.", null],
   ["Fixed an issue with the Toggle Boosters setting.", null],

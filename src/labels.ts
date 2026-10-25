@@ -11,10 +11,11 @@
  * Lines it can't be sure about get no tag.
  */
 
-/** Stats where a SMALLER number is better for the hero. Checked first. */
+/** Stats where a SMALLER number is better for the hero. */
 const LOWER_IS_BETTER = [
   "cooldown", "spread", "cost", "reload", "cast time", "wind-up", "windup", "recovery",
   "delay", "charge time", "lock-on time", "damage taken", "damage received", "self-damage",
+  "penalty",
 ];
 
 /** Stats where a BIGGER number is better for the hero. */
@@ -22,6 +23,7 @@ const HIGHER_IS_BETTER = [
   "damage", "health", "armor", "shield", "overhealth", "healing", "heal", "range", "radius",
   "speed", "duration", "size", "width", "ammo", "charges", "falloff", "knockback",
   "ultimate charge", "ultimate generation", "regeneration", "lifesteal", "power",
+  "fire rate", "rate of fire", "recharge rate",
 ];
 
 // "from 150 to 125" / "reverted from 1.5 to 1" / "to 5s (Up from 4s)" / "reduced by 6%"
@@ -46,12 +48,28 @@ function changeDirection(line: string): Direction | null {
   return null;
 }
 
-/** Which way is better for this stat? Uses the text before the numbers, e.g. "Base armor". */
+/**
+ * Which way is better for this stat? Uses the text before the numbers, e.g. "Base armor".
+ * When several stats are named, the last one wins, since that's the thing being changed:
+ * "Reload speed" is a speed (higher is better), "Movement speed penalty" is a penalty (lower is better).
+ */
 function betterDirection(line: string): Direction | null {
   const statText = line.split(/\bfrom\b|\bby\b|\bto\b/i)[0].toLowerCase();
-  if (LOWER_IS_BETTER.some((word) => statText.includes(word))) return "down";
-  if (HIGHER_IS_BETTER.some((word) => statText.includes(word))) return "up";
-  return null;
+  const stats: [string, Direction][] = [
+    ...LOWER_IS_BETTER.map((word): [string, Direction] => [word, "down"]),
+    ...HIGHER_IS_BETTER.map((word): [string, Direction] => [word, "up"]),
+  ];
+  let best: { end: number; length: number; direction: Direction } | null = null;
+  for (const [word, direction] of stats) {
+    const start = statText.lastIndexOf(word);
+    if (start === -1) continue;
+    const end = start + word.length;
+    // Prefer the stat that ends last; on a tie, the longer (more specific) one, e.g. "damage taken"
+    if (!best || end > best.end || (end === best.end && word.length > best.length)) {
+      best = { end, length: word.length, direction };
+    }
+  }
+  return best?.direction ?? null;
 }
 
 /** Returns "buff", "nerf", or null when the line isn't a clear numeric change. */

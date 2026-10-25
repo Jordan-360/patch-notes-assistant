@@ -2,13 +2,16 @@
  * api.ts - talks to the API server.
  */
 
-import type { AnswerEvent, PatchInfo } from "./types";
+import type { AnswerEvent, Health, PatchInfo } from "./types";
 
-export async function fetchPatches(): Promise<PatchInfo[]> {
-  const res = await fetch("/api/patches");
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`The server returned ${res.status}.`);
   return res.json();
 }
+
+export const fetchHealth = () => getJson<Health>("/api/health");
+export const fetchPatches = () => getJson<PatchInfo[]>("/api/patches");
 
 /**
  * Asks a question and calls onEvent for each event as it streams in.

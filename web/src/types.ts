@@ -23,6 +23,13 @@ export type AnswerEvent =
   | { type: "empty"; doneReason: string }
   | { type: "error"; message: string };
 
+export interface Health {
+  ok: boolean;
+  chunks: number;
+  patches: number;
+  model: string;
+}
+
 export interface PatchInfo {
   date: string;
   title: string;

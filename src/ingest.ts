@@ -11,14 +11,10 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chunkPatch, parsePatchFile, textForEmbedding, type Chunk } from "./chunk.js";
 import { embed, EMBED_MODEL } from "./ollama.js";
+import { INDEX_FILE, type IndexedChunk } from "./retrieve.js";
 
 const PATCH_DIR = "data/patches";
-const INDEX_FILE = "data/index.json";
 const BATCH_SIZE = 32; // how many chunks to send to Ollama at once
-
-export interface IndexedChunk extends Chunk {
-  embedding: number[];
-}
 
 async function main() {
   const files = (await readdir(PATCH_DIR)).filter((f) => f.endsWith(".txt")).sort();

@@ -9,13 +9,12 @@ export type PatchScope = "all" | "latest" | string; // a string date like "2026-
 /** "2026-09-08" -> "September 8" */
 export function formatPatchDate(date: string, withYear = false): string {
   const [year, month, day] = date.split("-").map(Number);
-  const text = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     timeZone: "UTC",
     ...(withYear ? { year: "numeric" } : {}),
   });
-  return text;
 }
 
 // Matches the patch phrases the server understands, so we don't add a second one
@@ -36,6 +35,13 @@ export const QUICK_QUESTIONS = [
   { label: "Damage", question: "Summarize the latest patch for damage players" },
   { label: "Supports", question: "Summarize the latest patch for support players" },
   { label: "Stadium", question: "Summarize the Stadium changes in the latest patch" },
+];
+
+export const EXAMPLE_QUESTIONS = [
+  "What changed for Mauga?",
+  "Did Ana's Sleep Dart get weaker?",
+  "Summarize the latest patch for support players",
+  "What changed for Wuyang in Stadium?",
 ];
 
 export function patchOptions(patches: PatchInfo[]) {

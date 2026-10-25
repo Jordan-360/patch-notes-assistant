@@ -10,7 +10,7 @@ Ask questions about Overwatch patch notes in plain English and get short answers
 ![Ollama](https://img.shields.io/badge/Ollama-local%20LLMs-000000)
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-![Patch TL;DR answering "What changed for Mauga?"](assets/screenshot.png)
+![Patch Notes Assistant answering "What changed for Mauga?"](assets/screenshot.png)
 
 Patch notes are long, and most players only care about a few heroes. Instead of reading every patch, you can ask things like:
 
@@ -50,7 +50,7 @@ Every claim in an answer links to the patch-note excerpt it came from, and every
 |---|---|
 | `src/chunk.ts` | Parses patch files and splits them into hero, section, and map chunks, tagging Stadium-only content |
 | `src/ingest.ts` | Embeds every chunk and saves the index |
-| `src/retrieve.ts`, `src/patches.ts` | Filters by hero, role, patch, and mode, then ranks by similarity |
+| `src/retrieve.ts`, `src/patches.ts` | Loads the index, filters by hero, role, patch, and mode, then ranks by similarity |
 | `src/labels.ts` | Rules engine that labels changes as buffs or nerfs |
 | `src/answer.ts` | The RAG loop: retrieve, prompt, stream, and track citations |
 | `src/server.ts` | Express API: `/api/health`, `/api/patches`, `/api/ask` (streaming) |
@@ -71,7 +71,7 @@ patch-notes-assistant/
 │   ├── answer.ts        # the RAG loop (shared by the CLI and the API)
 │   ├── ollama.ts        # embedding and streaming chat client
 │   ├── server.ts        # Express API
-│   └── ask.ts, search.ts, inspect.ts   # command-line tools
+│   └── ask.ts, search.ts, inspect.ts, embed-test.ts   # command-line tools
 ├── web/                 # React front end
 │   └── src/
 │       ├── App.tsx
@@ -111,12 +111,20 @@ cd web && npm run dev
 
 Then open http://localhost:5173.
 
+Answers start almost immediately because the model's "thinking" step is off by default. To let it reason before answering (slower, sometimes more thorough on long summaries), start the server with it on:
+
+```bash
+THINK=true npm run server              # macOS / Linux
+$env:THINK="true"; npm run server      # Windows PowerShell
+```
+
 Other commands:
 
 ```bash
 npm run inspect -- data/patches/2026-09-08.txt   # preview how a patch file gets chunked
 npm run search -- "What changed for Mauga?"      # see which chunks a question retrieves
 npm run ask -- "What changed for Mauga?"         # get an answer in the terminal
+npm run embed-test                                # see how embeddings rank a few sample lines
 npm test                                          # run the buff/nerf rule tests
 ```
 
@@ -127,7 +135,7 @@ Patch-note text belongs to Blizzard Entertainment, so patch files are kept out o
 - **Retrieval can be right while generation is wrong.** With Llama 3.2 (3B), the right patch notes reached the model, but it skipped citations, mixed up items, and once claimed tanks had no changes when six did. Moving to Qwen 3.5 (4B) fixed most of it.
 - **Embeddings match structure, not just meaning.** "Ana: Sleep Dart reduced from X to Y" scored closer to a Reinhardt line with the same format than to a related support change. Filtering by hero and role before searching fixed it.
 - **Use code for anything that must be exactly right.** The model repeatedly labeled a spread reduction as a nerf because "the number went down," and it spent tens of thousands of characters overthinking the labels. A small tested rules engine made the labels correct and the answers faster.
-- **Plan for the model failing.** Thinking models sometimes filled their whole context window without answering, so the app retries once without thinking.
+- **Plan for the model failing.** Thinking models sometimes filled their whole context window without answering, so the app retries once without thinking. In the end, thinking is off by default: the sources and buff/nerf labels are already worked out in code, so the extra reasoning mostly added waiting.
 - **Different questions need different retrieval.** Specific questions want the closest few chunks; summaries need every matching chunk, or heroes get left out.
 
 ## Next steps

@@ -13,7 +13,6 @@
 
 import express from "express";
 import { answerQuestion } from "./answer.js";
-import type { IndexedChunk } from "./ingest.js";
 import { CHAT_MODEL } from "./ollama.js";
 import { loadIndex } from "./retrieve.js";
 
@@ -22,7 +21,7 @@ const MAX_QUESTION_LENGTH = 300;
 
 async function main() {
   // Load the index once at startup. After running "npm run ingest", restart the server.
-  const chunks: IndexedChunk[] = await loadIndex();
+  const chunks = await loadIndex();
 
   const app = express();
   app.use(express.json({ limit: "10kb" }));
@@ -45,7 +44,7 @@ async function main() {
       return;
     }
     if (question.length > MAX_QUESTION_LENGTH) {
-      res.status(400).json({ error: `Questions must be under ${MAX_QUESTION_LENGTH} characters.` });
+      res.status(400).json({ error: `Questions can be at most ${MAX_QUESTION_LENGTH} characters.` });
       return;
     }
 
@@ -53,20 +52,23 @@ async function main() {
     res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache");
 
-    // If the browser disconnects mid-answer, stop sending
-    let closed = false;
+    // If the browser disconnects mid-answer (or the user presses Stop), stop the model too,
+    // so the GPU isn't left generating an answer nobody will see
+    const controller = new AbortController();
     res.on("close", () => {
-      closed = true;
+      if (!res.writableFinished) controller.abort();
     });
+    const send = (event: object) => {
+      if (!controller.signal.aborted) res.write(JSON.stringify(event) + "\n");
+    };
 
     try {
-      await answerQuestion(question, chunks, (event) => {
-        if (!closed) res.write(JSON.stringify(event) + "\n");
-      });
+      await answerQuestion(question, chunks, send, controller.signal);
     } catch (err) {
+      if (controller.signal.aborted) return;
       const message = err instanceof Error ? err.message : "Something went wrong.";
       console.error(`Error answering "${question}":`, message);
-      if (!closed) res.write(JSON.stringify({ type: "error", message }) + "\n");
+      send({ type: "error", message });
     }
     res.end();
   });

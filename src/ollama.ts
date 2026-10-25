@@ -1,27 +1,39 @@
 /**
- * ollama.ts - talks to the local Ollama server.
+ * ollama.ts - talks to the local Ollama server: embeddings for search, streaming chat for answers.
  */
 
 // Override with the OLLAMA_URL environment variable if Ollama runs somewhere else
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
 export const EMBED_MODEL = "nomic-embed-text";
 
+/** POSTs JSON to Ollama, turning "can't connect" into a message that says what to do. */
+async function post(path: string, body: unknown, model: string, signal?: AbortSignal): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(`${OLLAMA_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    throw new Error(`Can't reach Ollama at ${OLLAMA_URL}. Start it with "ollama serve" or open the Ollama app.`);
+  }
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Ollama returned ${res.status} ${detail}. Did you run "ollama pull ${model}"?`);
+  }
+  return res;
+}
+
 /**
  * Turns texts into embeddings (one list of numbers per text).
  * nomic-embed-text works best when texts are labeled by role, so callers add
  * "search_query: " to questions and "search_document: " to patch-note chunks.
  */
-export async function embed(texts: string[]): Promise<number[][]> {
-  const res = await fetch(`${OLLAMA_URL}/api/embed`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: EMBED_MODEL, input: texts }),
-  });
-  if (!res.ok) {
-    throw new Error(
-      `Ollama returned ${res.status}. Is Ollama running, and did you run "ollama pull ${EMBED_MODEL}"?`,
-    );
-  }
+export async function embed(texts: string[], signal?: AbortSignal): Promise<number[][]> {
+  const res = await post("/api/embed", { model: EMBED_MODEL, input: texts }, EMBED_MODEL, signal);
   const data = (await res.json()) as { embeddings: number[][] };
   return data.embeddings;
 }
@@ -41,8 +53,9 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 export const CHAT_MODEL = process.env.CHAT_MODEL ?? "qwen3.5:4b";
 
-// Thinking models (like Qwen 3.5) reason before answering. Set THINK=false to skip that step.
-const THINK = process.env.THINK === undefined ? undefined : process.env.THINK !== "false";
+// Thinking models (like Qwen 3.5) can reason before answering. That's off by default because it
+// delays every answer by many seconds; set THINK=true to turn it on.
+const THINK = process.env.THINK === "true";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -55,72 +68,67 @@ export interface ChatResult {
   doneReason: string;     // why it stopped: "stop" is normal, "length" means it ran out of room
 }
 
-/**
- * Sends a conversation to a chat model and streams the reply back piece by piece,
- * calling onToken for each piece of the answer as it arrives.
- */
+export interface ChatOptions {
+  onToken: (text: string) => void;  // called with each piece of the answer as it arrives
+  onThinking?: () => void;          // called while a thinking model reasons
+  think?: boolean;                  // reason before answering (defaults to the THINK setting)
+  signal?: AbortSignal;             // abort to stop generating (e.g. the browser disconnected)
+}
+
+/** Sends a conversation to a chat model and streams the reply back piece by piece. */
 export async function chatStream(
   messages: ChatMessage[],
-  onToken: (text: string) => void,
-  onThinking?: () => void,
-  think: boolean | undefined = THINK, // pass false to force the model to answer without thinking
+  { onToken, onThinking, think = THINK, signal }: ChatOptions,
 ): Promise<ChatResult> {
-  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: CHAT_MODEL,
-      messages,
-      stream: true,
-      ...(think === undefined ? {} : { think }),
-      options: {
-        temperature: 0.2, // low temperature: stick closely to the sources
-        num_ctx: 16384,   // context window: room for the sources, the thinking, and the answer
-      },
-    }),
-  });
-  if (!res.ok || !res.body) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(
-      `Ollama returned ${res.status} ${detail}. Is Ollama running, and did you run "ollama pull ${CHAT_MODEL}"?`,
-    );
-  }
+  const body = {
+    model: CHAT_MODEL,
+    messages,
+    stream: true,
+    think,
+    options: {
+      temperature: 0.2, // low temperature: stick closely to the sources
+      num_ctx: 16384,   // context window: room for the sources, the thinking, and the answer
+    },
+  };
+  const res = await post("/api/chat", body, CHAT_MODEL, signal);
 
   // Ollama streams one JSON object per line, each holding the next piece of the reply.
   // Thinking models send their reasoning in "thinking" and the answer in "content".
-  const reader = res.body.getReader();
+  const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let answer = "";
   let thinkingChars = 0;
   let doneReason = "unknown";
+  const handleLine = (line: string) => {
+    if (!line.trim()) return;
+    const piece = JSON.parse(line) as {
+      message?: { content?: string; thinking?: string };
+      done?: boolean;
+      done_reason?: string;
+      error?: string;
+    };
+    if (piece.error) throw new Error(`Ollama error: ${piece.error}`);
+    const thinking = piece.message?.thinking ?? "";
+    if (thinking) {
+      thinkingChars += thinking.length;
+      onThinking?.();
+    }
+    const text = piece.message?.content ?? "";
+    if (text) {
+      answer += text;
+      onToken(text);
+    }
+    if (piece.done) doneReason = piece.done_reason ?? "stop";
+  };
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? ""; // keep any half-received line for the next round
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const piece = JSON.parse(line) as {
-        message?: { content?: string; thinking?: string };
-        done?: boolean;
-        done_reason?: string;
-        error?: string;
-      };
-      if (piece.error) throw new Error(`Ollama error: ${piece.error}`);
-      const thinking = piece.message?.thinking ?? "";
-      if (thinking) {
-        thinkingChars += thinking.length;
-        onThinking?.();
-      }
-      const text = piece.message?.content ?? "";
-      if (text) {
-        answer += text;
-        onToken(text);
-      }
-      if (piece.done) doneReason = piece.done_reason ?? "stop";
-    }
+    lines.forEach(handleLine);
   }
+  handleLine(buffer + decoder.decode()); // the last line, if it didn't end with a newline
   return { answer, thinkingChars, doneReason };
 }

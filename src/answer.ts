@@ -9,10 +9,9 @@
  * done...). The terminal prints them; the server streams them to the browser.
  */
 
-import type { IndexedChunk } from "./ingest.js";
-import { CHAT_MODEL, chatStream, type ChatMessage } from "./ollama.js";
 import { labelChanges } from "./labels.js";
-import { retrieve, type Result } from "./retrieve.js";
+import { CHAT_MODEL, chatStream, type ChatMessage } from "./ollama.js";
+import { retrieve, wantsStadium, type IndexedChunk } from "./retrieve.js";
 
 const TOP_K = 6;          // how many chunks the model gets to read for a normal question
 const SUMMARY_TOP_K = 15; // summaries need every matching chunk, not just the closest few
@@ -55,13 +54,10 @@ export type AnswerEvent =
   | { type: "done"; cited: number[] }           // finished; which source numbers were cited
   | { type: "empty"; doneReason: string };      // the model gave no answer
 
-/** Formats the retrieved chunks as numbered sources for the model to read. */
-function formatSources(results: Result[]): string {
-  return results
-    .map(({ chunk }, i) => {
-      const stadium = chunk.mode === "stadium" ? " (Stadium mode only)" : "";
-      return `[${i + 1}] ${chunk.patch.title} - ${chunk.section}${stadium}\n${labelChanges(chunk.text)}`;
-    })
+/** Formats the sources as a numbered list for the model to read. */
+function formatSources(sources: SourceInfo[]): string {
+  return sources
+    .map((s) => `[${s.number}] ${s.title} - ${s.section}${s.stadium ? " (Stadium mode only)" : ""}\n${s.text}`)
     .join("\n\n");
 }
 
@@ -69,6 +65,7 @@ export async function answerQuestion(
   question: string,
   chunks: IndexedChunk[],
   emit: (event: AnswerEvent) => void,
+  signal?: AbortSignal, // abort to stop early, e.g. when the browser disconnects
 ): Promise<void> {
   // 1. Retrieve: find the most relevant chunks
   const isSummary = SUMMARY_QUESTION.test(question);
@@ -76,6 +73,7 @@ export async function answerQuestion(
     question,
     chunks,
     isSummary ? SUMMARY_TOP_K : TOP_K,
+    signal,
   );
   // Summaries keep every filtered chunk (newest patch first, then patch-notes order);
   // normal questions keep only chunks that are close enough in meaning
@@ -104,7 +102,7 @@ export async function answerQuestion(
     return;
   }
   if (heroesWithNoChanges.length > 0) {
-    const where = /\bstadium\b/i.test(question) ? " in Stadium" : "";
+    const where = wantsStadium(question) ? " in Stadium" : "";
     emit({ type: "direct", text: `There are no changes to ${heroesWithNoChanges.join(" or ")}${where} in ${target.label}.` });
     return;
   }
@@ -119,7 +117,7 @@ export async function answerQuestion(
     {
       role: "user",
       content:
-        `Sources:\n\n${formatSources(results)}\n\nQuestion: ${question}` +
+        `Sources:\n\n${formatSources(sources)}\n\nQuestion: ${question}` +
         (isSummary ? `\n\nThis is a summary: cover EVERY source above, one bullet per hero or topic. Do not skip any.` : ""),
     },
   ];
@@ -135,12 +133,12 @@ export async function answerQuestion(
   };
   const onToken = (text: string) => emit({ type: "token", text });
 
-  let { answer, thinkingChars, doneReason } = await chatStream(messages, onToken, onThinking);
+  let { answer, thinkingChars, doneReason } = await chatStream(messages, { onToken, onThinking, signal });
 
   // Fallback: if the model thought so long it ran out of room, retry once without thinking
   if (!answer.trim() && thinkingChars > 0) {
     emit({ type: "retry", thinkingChars });
-    ({ answer, doneReason } = await chatStream(messages, onToken, onThinking, false));
+    ({ answer, doneReason } = await chatStream(messages, { onToken, onThinking, think: false, signal }));
   }
   if (!answer.trim()) {
     emit({ type: "empty", doneReason });

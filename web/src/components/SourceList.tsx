@@ -33,11 +33,12 @@ export function SourceList({ sources, openSource, onToggle }: Props) {
                   {source.stadium && <span className="stadium-note">Stadium only</span>}
                 </span>
                 <span className="source-date">{formatPatchDate(source.date, true)}</span>
+                <span className="chevron" aria-hidden="true" />
               </summary>
               <div className="source-body">
                 <RichText text={source.text} validCitations={new Set()} />
                 <a href={source.url} target="_blank" rel="noreferrer">
-                  Open the official {formatPatchDate(source.date)} patch notes
+                  Open the official {formatPatchDate(source.date)} patch notes ↗
                 </a>
               </div>
             </details>

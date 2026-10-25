@@ -14,7 +14,8 @@ interface Props {
   onCite?: (number: number) => void;
 }
 
-const INLINE = /(\*\*[^*\n]+\*\*|\[\d+\]|\((?:buff|nerf)\))/gi;
+// **bold**, citations like [1] or [1, 3], and (buff)/(nerf) tags
+const INLINE = /(\*\*[^*\n]+\*\*|\[\d+(?:\s*,\s*\d+)*\]|\((?:buff|nerf)\))/gi;
 
 export function ChangeTag({ kind }: { kind: "buff" | "nerf" }) {
   return (
@@ -31,21 +32,22 @@ function renderInline(text: string, props: Props, keyPrefix: string): ReactNode[
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
       return <strong key={key}>{renderInline(part.slice(2, -2), props, key)}</strong>;
     }
-    const citation = part.match(/^\[(\d+)\]$/);
-    if (citation) {
-      const number = Number(citation[1]);
-      if (!props.validCitations.has(number) || !props.onCite) return <sup key={key}>{part}</sup>;
-      return (
-        <button
-          key={key}
-          type="button"
-          className="cite"
-          onClick={() => props.onCite?.(number)}
-          aria-label={`Show source ${number}`}
-        >
-          {number}
-        </button>
-      );
+    if (/^\[[\d,\s]+\]$/.test(part)) {
+      return part.match(/\d+/g)!.map((digits, j) => {
+        const number = Number(digits);
+        if (!props.validCitations.has(number) || !props.onCite) return <sup key={`${key}-${j}`}>[{number}]</sup>;
+        return (
+          <button
+            key={`${key}-${j}`}
+            type="button"
+            className="cite"
+            onClick={() => props.onCite?.(number)}
+            aria-label={`Show source ${number}`}
+          >
+            {number}
+          </button>
+        );
+      });
     }
     const tag = part.match(/^\((buff|nerf)\)$/i);
     if (tag) return <ChangeTag key={key} kind={tag[1].toLowerCase() as "buff" | "nerf"} />;
@@ -62,8 +64,8 @@ function toBlocks(text: string): Block[] {
   const blocks: Block[] = [];
   for (const rawLine of text.split("\n")) {
     const line = rawLine.trim();
-    if (!line) continue;
-    const bullet = line.match(/^[*\-•]\s+(.*)$/);
+    if (!line || /^([-*_])\1{2,}$/.test(line)) continue; // skip blank lines and --- dividers
+    const bullet = line.match(/^(?:[*\-•]|\d+[.)])\s+(.*)$/); // "- item" or "1. item"
     const heading = line.match(/^#{1,4}\s+(.*)$/) ?? line.match(/^\*\*([^*]+)\*\*(\s*\[\d+\])*:?$/);
     if (bullet) {
       const last = blocks[blocks.length - 1];
